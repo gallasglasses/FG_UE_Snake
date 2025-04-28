@@ -4,19 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "InputActionValue.h"
+#include "FG_UE_CoreTypes.h"
+#include "Containers/Queue.h"
 
 #include "Snake.generated.h"
 
 class UBoxComponent;
 class UCameraComponent;
 class UInstancedStaticMeshComponent;
+class UFloatingPawnMovement;
 class USceneComponent;
 class USphereComponent;
 class UStaticMeshComponent;
 class USpringArmComponent;
-class UInputMappingContext;
-class UInputAction;
+class ASnakeBody;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeadSignature, ASnake*, DeadSnake);
 
 UCLASS()
 class FG_UE_SNAKE_API ASnake : public APawn
@@ -39,6 +42,12 @@ protected:
 		UStaticMeshComponent* HeadMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
+		UStaticMeshComponent* RightEyeMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
+		UStaticMeshComponent* LeftEyeMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
 		UCameraComponent* CameraComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
@@ -47,34 +56,72 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
 		USpringArmComponent* SpringArmComponent;
 		
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
+		UInstancedStaticMeshComponent* InstancedTailMesh;*/
+		
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
-		UInstancedStaticMeshComponent* InstancedTailMesh;
+		UFloatingPawnMovement* MovementComponent;
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
+		EDirectionState CurrentDirection;
 
-	UPROPERTY(EditAnywhere, Category = "SnakeInput")
-		UInputMappingContext* WASDMappingContext;
-
-	UPROPERTY(EditAnywhere, Category = "SnakeInput")
-		UInputMappingContext* ArrowsMappingContext;
-
-	UPROPERTY(EditAnywhere, Category = "SnakeInput")
-		UInputAction* MovementAction;
-
-	UPROPERTY(EditAnywhere, Category = "SnakeInput")
-		UInputAction* LookAction;
+	UPROPERTY(EditDefaultsOnly, Category = "SnakeSettings")
+		TSubclassOf<ASnakeBody> SnakeBodyClass;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakePlayer")
-		bool bIsFirstPlayer;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
+		float MoveScale;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
+		float StepInterval = 0.4f;
 
-	void Move(const FInputActionValue& Value);
-	void Look(const FInputActionValue& Value);
+	UPROPERTY()
+		ASnakeBody* ChildSnakeBody = nullptr;
+
 
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
+public:
+
+	UPROPERTY(BlueprintAssignable)
+	FOnDeadSignature OnDead;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
+	bool bIsFirstPlayer;
+
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	void EatApple();
+	void HandleDeath();
+	void SetDirection(EDirectionState Direction);
 
+	UFUNCTION()
+	void OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnCollisionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+private:
+
+	bool bIsMoving;
+	bool bIsAppleEatenRightNow = false;
+
+	int32 TileSize = -1;
+	int32 PendingGrowth = 0;
+	int32 DirectionQueueCount = 0;
+
+	float AccumulatedTime;
+	float MovementInterpolationTimer;
+
+	FVector StartLocation;
+	FVector TargetLocation;
+
+	FRotator StartRotation;
+	FRotator TargetRotation;
+
+	TQueue<EDirectionState> DirectionQueue;
+	EDirectionState LastQueuedDirection;
+
+	void GrowSnakeBody();
+	void HandleDirectionQueue();
+	EDirectionState GetNextDirection();
 };

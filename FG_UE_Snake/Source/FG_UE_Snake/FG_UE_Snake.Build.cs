@@ -8,7 +8,17 @@ public class FG_UE_Snake : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[] 
+			{ 
+				"Core", 
+				"CoreUObject", 
+				"Engine", 
+				"InputCore", 
+				"EnhancedInput",
+				"JsonUtilities",
+				"Json",
+            }
+		);
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
