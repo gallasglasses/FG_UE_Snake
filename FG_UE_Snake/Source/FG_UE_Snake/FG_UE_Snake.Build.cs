@@ -17,6 +17,9 @@ public class FG_UE_Snake : ModuleRules
 				"EnhancedInput",
 				"JsonUtilities",
 				"Json",
+				"GameplayTasks",
+				"NavigationSystem",
+                "AIModule"
             }
 		);
 

@@ -7,6 +7,7 @@
 #include "FG_UE_CoreTypes.h"
 #include "SnakePlayerState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnApplesEatenChangedSignature, int32, NewCount);
 
 UCLASS()
 class FG_UE_SNAKE_API ASnakePlayerState : public APlayerState
@@ -17,10 +18,27 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Controller", meta = (AllowPrivateAccess = "true"))
 	EGamePlayerControllerType ControllerType;
 
+	UPROPERTY(BlueprintReadOnly, Category = "PlayerData")
+	int32 ApplesEaten = 0;
+
 public:
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE EGamePlayerControllerType GetControllerType() const { return ControllerType; }
 
 	UFUNCTION(BlueprintCallable)
 	void SetControllerType(EGamePlayerControllerType Type);
+
+	UPROPERTY(BlueprintAssignable, Category = "PlayerData")
+	FOnApplesEatenChangedSignature OnApplesEatenChanged;
+
+	UFUNCTION()
+	void OnAppleCountChanged(AController* EatenBy);
+
+	UFUNCTION(BlueprintCallable)
+	void ResetAppleCount();
+
+	int32 GetApplesEatenCount() const { return ApplesEaten; }
+
+private:
+
 };

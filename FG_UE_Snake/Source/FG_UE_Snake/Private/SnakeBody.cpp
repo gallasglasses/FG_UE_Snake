@@ -27,7 +27,6 @@ ASnakeBody::ASnakeBody()
 	StepInterval = 0.4f;
 }
 
-
 void ASnakeBody::BeginPlay()
 {
 	Super::BeginPlay();
@@ -44,6 +43,7 @@ void ASnakeBody::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//UE_LOG(SnakeBodyLog, Display, TEXT("bIsMoving : %s"), bIsMoving ? TEXT("TRUE") : TEXT("FALSE"));
 	if (bIsMoving)
 	{
 		MovementInterpolationTimer += DeltaTime;
@@ -56,18 +56,9 @@ void ASnakeBody::Tick(float DeltaTime)
 		{
 			bIsMoving = false;
 			CurrentLocation = TargetLocation;
-
-			//UE_LOG(SnakeBodyLog, Display, TEXT("EnableCollision"));
 			EnableCollision();
-
-			/*FTimerHandle TimerHandle;
-			GetWorldTimerManager().SetTimer(TimerHandle, this, &ASnakeBody::EnableCollision, 1.f, false);*/
-
-			/*if (BodyCollisionComponent->GetCollisionResponseToChannels() == ECollisionResponse::ECR_Ignore)
-				BodyCollisionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);*/
 		}
 	}
-
 }
 
 const FVector& ASnakeBody::GetLastLocation()
@@ -76,15 +67,16 @@ const FVector& ASnakeBody::GetLastLocation()
 	{
 		return ChildSnakeBody->GetLastLocation();
 	}
-
 	return CurrentLocation;
 }
 
-void ASnakeBody::SetNextLocation(const FVector& Location)
+void ASnakeBody::SetNextLocation(const FVector& Location, EDirectionState Direction)
 {
+	if (Direction == EDirectionState::None) return;
+
 	if (IsValid(ChildSnakeBody))
 	{
-		ChildSnakeBody->SetNextLocation(TargetLocation);
+		ChildSnakeBody->SetNextLocation(TargetLocation, Direction);
 	}
 
 	CurrentLocation = GetActorLocation();
@@ -103,14 +95,14 @@ void ASnakeBody::AddChildSnakeBody(ASnakeBody* SnakeBody)
 	}
 }
 
-void ASnakeBody::SetIsMoving()
+void ASnakeBody::SetIsMoving(bool IsMoving)
 {
 	if (IsValid(ChildSnakeBody))
 	{
-		ChildSnakeBody->SetIsMoving();
+		ChildSnakeBody->SetIsMoving(IsMoving);
 	}
 	MovementInterpolationTimer = 0.f;
-	bIsMoving = true;
+	bIsMoving = IsMoving;
 }
 
 void ASnakeBody::HandleDestroy()
@@ -120,6 +112,11 @@ void ASnakeBody::HandleDestroy()
 		ChildSnakeBody->HandleDestroy();
 	}
 	Destroy();
+}
+
+void ASnakeBody::ChangeMeshMaterial(UMaterialInterface* Material)
+{
+	BodyMesh->SetMaterial(0, Material);
 }
 
 void ASnakeBody::EnableCollision()

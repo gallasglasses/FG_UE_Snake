@@ -12,6 +12,8 @@
 #include "S_MenuGameModeBase.h"
 #include "S_GameDataState.h"
 #include "S_GameDataSubsystem.h"
+#include "Components/Slider.h"
+#include "Components/TextBlock.h"
 
 DEFINE_LOG_CATEGORY_STATIC(MenuWidgetLog, All, All);
 
@@ -23,47 +25,63 @@ void US_MenuWidget::ShowOpening()
 
 void US_MenuWidget::NativeOnInitialized()
 {
-	if (NewGameButton)
+	Super::NativeOnInitialized();
+
+	if (IsValid(NewGameButton))
 	{
 		NewGameButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnStartNewGame);
 	}
 
-	if (SingleplayerButton)
+	if (IsValid(SingleplayerButton))
 	{
 		SingleplayerButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseSingleplayerGame);
 	}
 
-	if (MultiplayerButton)
+	if (IsValid(MultiplayerButton))
 	{
 		MultiplayerButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseMultiplayerGame);
 	}
 
-	if (CoopButton)
+	if (IsValid(CoopButton))
 	{
 		CoopButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseCoopGame);
 	}
 
-	if (BattleButton)
+	if (IsValid(BattleButton))
 	{
 		BattleButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseBattleGame);
 	}
 
-	if (RealPlayerButton)
+	if (IsValid(RealPlayerButton))
 	{
 		RealPlayerButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseRealPlayer);
 	}
 
-	if (AIPlayerButton)
+	if (IsValid(AIPlayerButton))
 	{
 		AIPlayerButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnChooseAIPlayer);
 	}
 
-	if (QuitButton)
+	if (IsValid(PercentApplesToEatSlider))
+	{
+		PercentApplesToEatSlider->OnValueChanged.AddDynamic(this, &US_MenuWidget::OnSliderValueChanged);
+		PercentApplesToEatSlider->SetMinValue(0);
+		PercentApplesToEatSlider->SetMaxValue(100);
+		PercentApplesToEatSlider->SetStepSize(1);
+		PercentApplesToEatSlider->SetValue(0);
+	}
+
+	if (IsValid(StartGameButton))
+	{
+		StartGameButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnStartGame);
+	}
+
+	if (IsValid(QuitButton))
 	{
 		QuitButton->OnClicked.AddDynamic(this, &US_MenuWidget::OnQuitGame);
 	}
 	
-	if (BackToMenuWidget)
+	if (IsValid(BackToMenuWidget))
 	{
 		BackToMenuWidget->OnBackToMenuClicked.AddDynamic(this, &US_MenuWidget::OnBackToMenu);
 	}
@@ -123,7 +141,8 @@ void US_MenuWidget::OnChooseSingleplayerGame()
 	/*if (!GetThisGameInstance()) return;
 	GetThisGameInstance()->SetGameMode(EGameMode::Singleplayer);*/
 
-	OnStartGame();
+	MenuSwitcher->SetActiveWidgetIndex(4);
+	//OnStartGame();
 }
 
 void US_MenuWidget::OnChooseMultiplayerGame()
@@ -164,7 +183,8 @@ void US_MenuWidget::OnChooseRealPlayer()
 	/*if (!GetThisGameInstance()) return;
 	GetThisGameInstance()->SetGamePlayer(EGamePlayer::Real);*/
 
-	OnStartGame();
+	MenuSwitcher->SetActiveWidgetIndex(4);
+	//OnStartGame();
 }
 
 void US_MenuWidget::OnChooseAIPlayer()
@@ -176,7 +196,19 @@ void US_MenuWidget::OnChooseAIPlayer()
 	/*if (!GetThisGameInstance()) return;
 	GetThisGameInstance()->SetGamePlayer(EGamePlayer::AI);*/
 
-	OnStartGame();
+	MenuSwitcher->SetActiveWidgetIndex(4);
+	//OnStartGame();
+}
+
+void US_MenuWidget::OnSliderValueChanged(float Value)
+{
+	if (IsValid(PercentApplesToEatText))
+	{
+		PercentApplesToEatText->SetText(S_Utils::TextFromInt(FMath::RoundToInt(Value)));
+		if (!GetThisGameDataState()) return;
+		GetThisGameDataState()->SetNumberOfApplesToEat(FMath::RoundToInt(Value));
+		UE_LOG(MenuWidgetLog, Display, TEXT("SetNumberOfApplesToEat : %d"), FMath::RoundToInt(Value));
+	}
 }
 
 void US_MenuWidget::OnStartGame()

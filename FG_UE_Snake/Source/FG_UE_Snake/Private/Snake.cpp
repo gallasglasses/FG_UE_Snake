@@ -19,14 +19,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "S_GameInstance.h"
 #include "SnakeBody.h"
+#include "OccludingObject.h"
+#include "Materials/MaterialParameterCollection.h"
 
 DEFINE_LOG_CATEGORY_STATIC(SnakeLog, All, All);
 
 ASnake::ASnake()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-    bIsFirstPlayer = true;
 
     HeadCollisionComponent = CreateDefaultSubobject<UBoxComponent>("HeadCollisionComponent");
     HeadCollisionComponent->SetupAttachment(GetRootComponent());
@@ -44,9 +44,6 @@ ASnake::ASnake()
     LeftEyeMesh->SetupAttachment(HeadMesh);
     LeftEyeMesh->SetRelativeLocation(FVector(30.f, -30.f, 50.f));
     LeftEyeMesh->SetRelativeScale3D(FVector(0.2f));
-
-    /*InstancedTailMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>("InstancedTailMesh");
-    InstancedTailMesh->SetupAttachment(HeadCollisionComponent);*/
 
     SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>("SpringArmComponent");
     SpringArmComponent->SetupAttachment(HeadCollisionComponent);
@@ -80,31 +77,6 @@ ASnake::ASnake()
     UE_LOG(SnakeLog, Display, TEXT("ASnake"));
 }
 
-//void ASnake::MoveUp(const FInputActionValue& Value)
-//{
-//    SetDirection(EDirectionState::Up);
-//}
-//
-//void ASnake::MoveRight(const FInputActionValue& Value)
-//{
-//    SetDirection(EDirectionState::Right);
-//}
-//
-//void ASnake::MoveDown(const FInputActionValue& Value)
-//{
-//    SetDirection(EDirectionState::Down);
-//}
-//
-//void ASnake::MoveLeft(const FInputActionValue& Value)
-//{
-//    SetDirection(EDirectionState::Left);
-//}
-//
-//void ASnake::Look(const FInputActionValue& Value)
-//{
-//	
-//}
-
 void ASnake::SetDirection(EDirectionState Direction)
 {
     if(DirectionQueueCount >= 10)
@@ -125,29 +97,45 @@ void ASnake::SetDirection(EDirectionState Direction)
     CurrentDirection = Direction;*/
 }
 
+void ASnake::RotateCamera(EDirectionState Direction)
+{
+    switch (Direction)
+    {
+    case EDirectionState::Up:
+        SpringArmComponent->AddLocalRotation(FRotator(1, 0, 0));
+        break;
+    case EDirectionState::Right:
+        SpringArmComponent->AddLocalRotation(FRotator(0, 1, 0));
+        break;
+    case EDirectionState::Down:
+        SpringArmComponent->AddLocalRotation(FRotator(-1, 0, 0));
+        break;
+    case EDirectionState::Left:
+        SpringArmComponent->AddLocalRotation(FRotator(0, -1, 0));
+        break;
+    }
+    //CheckCameraOcclusion();
+}
+
+void ASnake::ChangeMeshMaterial(UMaterialInterface* Material)
+{
+    HeadMesh->SetMaterial(0, Material);
+    RightEyeMesh->SetMaterial(0, Material);
+    LeftEyeMesh->SetMaterial(0, Material);
+
+    UE_LOG(SnakeLog, Display, TEXT("ChangeMeshMaterial %s : %s"), *GetName(), *Material->GetName());
+}
+
+void ASnake::SetMaterialParameterNames(FName ActorParameter, FName CameraParameter)
+{
+    MaterialActorParameterName = ActorParameter;
+    MaterialCameraParameterName = CameraParameter;
+}
+
 void ASnake::BeginPlay()
 {
 	Super::BeginPlay();
-	
-    /*if (APlayerController* PC = Cast<APlayerController>(GetController()))
-    {
-        if (ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
-        {
-            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
-            {
-                Subsystem->ClearAllMappings();
-                if (bIsFirstPlayer && WASDMappingContext)
-                {
-                    Subsystem->AddMappingContext(WASDMappingContext, 0);
-                }
-                else if (!bIsFirstPlayer && ArrowsMappingContext)
-                {
-                    Subsystem->AddMappingContext(ArrowsMappingContext, 0);
-                }
-            }
-        }
-    }*/
-
+    UE_LOG(SnakeLog, Display, TEXT("Position %s : %s"), *GetName(), *GetActorLocation().ToString());
 
     if (!GetWorld()) return;
 
@@ -172,6 +160,8 @@ void ASnake::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+    SetMaterialParameters();
+    //CheckCameraOcclusion();
     if (bIsMoving)
     {
         MovementInterpolationTimer += DeltaTime;
@@ -192,14 +182,6 @@ void ASnake::Tick(float DeltaTime)
             if (PendingGrowth > 0)
             {
                 GrowSnakeBody();
-                /*if (bIsAppleEatenRightNow)
-                {
-                    bIsAppleEatenRightNow = !bIsAppleEatenRightNow;
-                }
-                else
-                {
-                    GrowSnakeBody();
-                }*/
             }
         }
     }
@@ -236,8 +218,8 @@ void ASnake::Tick(float DeltaTime)
             }
             if (IsValid(ChildSnakeBody))
             {
-                ChildSnakeBody->SetNextLocation(StartLocation);
-                ChildSnakeBody->SetIsMoving();
+                ChildSnakeBody->SetNextLocation(StartLocation, GetNextDirection());
+                ChildSnakeBody->SetIsMoving(true);
             }
             MovementInterpolationTimer = 0.f;
             bIsMoving = true;
@@ -245,38 +227,53 @@ void ASnake::Tick(float DeltaTime)
     }
 }
 
-//void ASnake::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-//{
-//	Super::SetupPlayerInputComponent(PlayerInputComponent);
-//
-//	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
-//	{
-//		EnhancedInputComponent->BindAction(MoveUpAction, ETriggerEvent::Triggered, this, &ASnake::MoveUp);
-//		EnhancedInputComponent->BindAction(MoveRightAction, ETriggerEvent::Triggered, this, &ASnake::MoveRight);
-//		EnhancedInputComponent->BindAction(MoveDownAction, ETriggerEvent::Triggered, this, &ASnake::MoveDown);
-//		EnhancedInputComponent->BindAction(MoveLeftAction, ETriggerEvent::Triggered, this, &ASnake::MoveLeft);
-//
-//		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASnake::Look);
-//	}
-//}
-
 void ASnake::EatApple()
 {
     UE_LOG(SnakeLog, Display, TEXT("EatApple"));
 
     PendingGrowth++;
     bIsAppleEatenRightNow = true;
-    
+
+    OnAppleEaten.Broadcast(GetController());
 }
 
 void ASnake::HandleDeath()
 {
-    OnDead.Broadcast(this);
+    UE_LOG(SnakeLog, Display, TEXT("HandleDeath"));
+    DirectionQueue.Empty();
+    SetDirection(EDirectionState::None);
+
+    if (IsValid(ChildSnakeBody))
+    {
+        ChildSnakeBody->SetIsMoving(false);
+    }
+
+    bIsMoving = false;
+
+    OnDead.Broadcast(GetController());
+    /*if (APlayerController* PC = Cast<APlayerController>(GetController()))
+    {
+        OnDead.Broadcast(PC);
+    }*/
+    //OnDead.Broadcast(this);
+
+    /*if (IsValid(ChildSnakeBody))
+    {
+        ChildSnakeBody->HandleDestroy();
+    }*/
+    //Destroy();
+    /*if (Controller)
+    {
+        Controller->ChangeState(NAME_Spectating);
+    }*/
+}
+
+void ASnake::ClearBody()
+{
     if (IsValid(ChildSnakeBody))
     {
         ChildSnakeBody->HandleDestroy();
     }
-    Destroy();
 }
 
 void ASnake::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -287,8 +284,15 @@ void ASnake::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, A
         ASnakeBody* SnakeBody = Cast<ASnakeBody>(OtherActor);
         if (SnakeBody && SnakeBody != ChildSnakeBody)
         {
-            UE_LOG(SnakeLog, Display, TEXT("OnCollision with %s"), *SnakeBody->GetName());
-            // END THE GAME
+            UE_LOG(SnakeLog, Display, TEXT("OnCollision %s with %s"), *this->GetName(), *SnakeBody->GetName());
+
+            HandleDeath();
+        }
+
+        ASnake* Snake = Cast<ASnake>(OtherActor);
+        if (Snake && Snake != this)
+        {
+            UE_LOG(SnakeLog, Display, TEXT("OnCollision %s with %s"), *this->GetName(), *Snake->GetName());
 
             HandleDeath();
         }
@@ -342,6 +346,7 @@ void ASnake::GrowSnakeBody()
     if (SnakeBody)
     {
         PendingGrowth--;
+        SnakeBody->ChangeMeshMaterial(HeadMesh->GetMaterial(0));
         UE_LOG(SnakeLog, Display, TEXT("SpawnActor %s"), *SnakeBody->GetName());
     }
 

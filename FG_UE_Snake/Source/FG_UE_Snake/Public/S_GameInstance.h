@@ -31,6 +31,8 @@ protected:
 	TMap<EGameLevel, FName> Levels;
 
 public:
+	UPROPERTY(BlueprintAssignable, Category = "GameData")
+	FOnNextLevelChangedSignature OnNextLevelChanged;
 
 	UFUNCTION(BlueprintCallable, Category = "GameData")
 	FORCEINLINE EGameLevel GetCurrentLevel() const { return CurrentLevel; }

@@ -10,7 +10,9 @@
 class ATile;
 class AWall;
 class AApple;
+class ANavMeshBoundsVolume;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSpawnedAppleSignature, AActor*, Apple);
 
 UCLASS()
 class FG_UE_SNAKE_API AS_GridManager : public AActor
@@ -20,6 +22,9 @@ class FG_UE_SNAKE_API AS_GridManager : public AActor
 public:	
 
 	AS_GridManager();
+
+	UPROPERTY(BlueprintAssignable, Category = "GridSettings")
+	FOnSpawnedAppleSignature OnSpawnedApple;
 
 protected:
 
@@ -36,16 +41,33 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GridSettings")
 	TSubclassOf<AApple> AppleClass;
 
+	UPROPERTY(EditAnywhere, Category = "Navigation")
+	ANavMeshBoundsVolume* NavMeshVolume;
+
+
 	virtual void Tick(float DeltaTime) override;
 
-	
+	UFUNCTION(BlueprintCallable, Category = "GridPathfinding")
+	bool FindPath(const FVector2D& Start, const FVector2D& Goal, TArray<ATile*>& OutPathTiles);
+
+	UFUNCTION(BlueprintPure, Category = "GridPathfinding")
+	FVector2D WorldLocationToGridIndex(const FVector& WorldLoc) const;
+
+	UFUNCTION(BlueprintPure, Category = "GridPathfinding")
+	FVector GridIndexToWorldLocation(const FVector2D& GridIdx) const;
+
+	AActor* GetSpawnedApple() const;
 
 private:
 
 	TArray<ATile*> Tiles;
+	TArray<AWall*> Walls;
 	int32 GridWidth;
 	int32 GridHeight;
 	int32 TileSize;
+
+	UPROPERTY()
+	AApple* SpawnedApple;
 
 	void GenerateGrid();
 	void SetNeighbours();
@@ -54,5 +76,8 @@ private:
 
 	bool LoadWallLayout(TArray<int32>& OutWallLayout, EGameLevel Level, const FString& JsonFilePath);
 
+	UFUNCTION()
+	void CalculateAppleCount(float PercentToEat, int32 NumPlayers);
 
+	void RebuildNavMesh();
 };

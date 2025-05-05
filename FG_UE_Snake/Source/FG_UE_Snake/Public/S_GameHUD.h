@@ -43,4 +43,5 @@ private:
 	UFUNCTION()
 	void OnGameStateChanged(EGameState PreviousState, EGameState NextState);
 	
+	void ShowInitWidget();
 };

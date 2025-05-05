@@ -21,7 +21,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameData")
 	EGamePlayer GamePlayer = EGamePlayer::Real;
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameData", meta = (ClampMin = "1", ClampMax = "50"))
+	int32 NumberOfApplesToEat = 0;
 
 public:
 
@@ -36,4 +38,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameData")
 	void SetGamePlayer(EGamePlayer Player);
+
+	UFUNCTION(BlueprintCallable, Category = "GameData")
+	FORCEINLINE int32 GetNumberOfApplesToEat() const { return NumberOfApplesToEat; }
+
+	UFUNCTION(BlueprintCallable, Category = "GameData")
+	void SetNumberOfApplesToEat(int32 NumberApples);
 };

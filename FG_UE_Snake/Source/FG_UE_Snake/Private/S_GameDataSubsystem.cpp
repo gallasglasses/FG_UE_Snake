@@ -15,6 +15,7 @@ void US_GameDataSubsystem::SaveGameData()
 
 	GameData.GameMode = GameDataState->GetGameMode();
 	GameData.GamePlayer = GameDataState->GetGamePlayer();
+	GameData.NumberOfApplesToEat = GameDataState->GetNumberOfApplesToEat();
 	UE_LOG(GameDataSubsystemLog, Display, TEXT("SaveGameData"));
 }
 
@@ -31,5 +32,6 @@ void US_GameDataSubsystem::LoadGameData()
 
 	GameDataState->SetGameMode(GameData.GameMode);
 	GameDataState->SetGamePlayer(GameData.GamePlayer);
+	GameDataState->SetNumberOfApplesToEat(GameData.NumberOfApplesToEat);
 	UE_LOG(GameDataSubsystemLog, Display, TEXT("LoadGameData"));
 }

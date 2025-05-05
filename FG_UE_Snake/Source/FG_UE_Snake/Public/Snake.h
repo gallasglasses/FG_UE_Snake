@@ -19,7 +19,8 @@ class UStaticMeshComponent;
 class USpringArmComponent;
 class ASnakeBody;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeadSignature, ASnake*, DeadSnake);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeadSignature, AController*, DeadController);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAppleEatenSignature, AController*, Instigator);
 
 UCLASS()
 class FG_UE_SNAKE_API ASnake : public APawn
@@ -27,13 +28,10 @@ class FG_UE_SNAKE_API ASnake : public APawn
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this pawn's properties
+
 	ASnake();
 
 protected:
-
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
-		USceneComponent* SceneComponent;*/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
 		UBoxComponent* HeadCollisionComponent;
@@ -56,9 +54,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
 		USpringArmComponent* SpringArmComponent;
 		
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
-		UInstancedStaticMeshComponent* InstancedTailMesh;*/
-		
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SnakeComponents")
 		UFloatingPawnMovement* MovementComponent;
 		
@@ -67,6 +62,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "SnakeSettings")
 		TSubclassOf<ASnakeBody> SnakeBodyClass;
+
+	UPROPERTY(EditAnywhere, Category = "SnakeSettings")
+	UMaterialParameterCollection* MPC_Occlusion;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
 		float MoveScale;
@@ -74,25 +72,38 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
 		float StepInterval = 0.4f;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
+	FName MaterialActorParameterName;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
+	FName MaterialCameraParameterName;
+
 	UPROPERTY()
 		ASnakeBody* ChildSnakeBody = nullptr;
 
 
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void SetMaterialParameters();
+
 public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnDeadSignature OnDead;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SnakeSettings")
-	bool bIsFirstPlayer;
+	UPROPERTY(BlueprintAssignable)
+	FOnAppleEatenSignature OnAppleEaten;
 
 	virtual void Tick(float DeltaTime) override;
 
 	void EatApple();
 	void HandleDeath();
+	void ClearBody();
 	void SetDirection(EDirectionState Direction);
+	void RotateCamera(EDirectionState Direction);
+	void ChangeMeshMaterial(UMaterialInterface* Material);
+	void SetMaterialParameterNames(FName ActorParameter, FName CameraParameter);
 
 	UFUNCTION()
 	void OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -120,8 +131,10 @@ private:
 
 	TQueue<EDirectionState> DirectionQueue;
 	EDirectionState LastQueuedDirection;
+	TSet<AActor*> OccludingObjects;
 
 	void GrowSnakeBody();
 	void HandleDirectionQueue();
+
 	EDirectionState GetNextDirection();
 };

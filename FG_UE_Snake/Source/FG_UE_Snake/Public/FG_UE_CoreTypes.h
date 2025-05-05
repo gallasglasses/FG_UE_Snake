@@ -56,14 +56,14 @@ enum class EGamePlayerControllerType : uint8
 UENUM(BlueprintType)
 enum class EGameLevel : uint8
 {
-	InitLevel,
-	MenuLevel,
 	PersistentLevel,
 	Level1,
 	Level2,
 	Level3,
 	Level4,
-	Level5
+	Level5,
+	InitLevel,
+	MenuLevel
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNextLevelChangedSignature, EGameLevel, NextLevel);
@@ -110,4 +110,14 @@ struct FGameData
 	UPROPERTY()
 	EGamePlayer GamePlayer;
 
+	UPROPERTY()
+	int32 NumberOfApplesToEat;
+
+};
+
+class S_Utils
+{
+public:
+
+	static FText TextFromInt(int32 Number) { return FText::FromString(FString::FromInt(Number)); }
 };

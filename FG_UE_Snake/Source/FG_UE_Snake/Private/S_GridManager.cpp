@@ -8,6 +8,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "S_GameInstance.h"
 #include "JsonManager.h"
+#include "S_GameModeBase.h"
+#include "NavigationSystem.h"
+#include "NavMesh/NavMeshBoundsVolume.h"
+#include "Components/BrushComponent.h"
+#include "Components/BoxComponent.h"
+#include "EngineUtils.h" 
 
 DEFINE_LOG_CATEGORY_STATIC(GridManagerLog, All, All);
 
@@ -22,7 +28,14 @@ void AS_GridManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!GetWorld()) return;
+	if (!IsValid(GetWorld())) return;
+
+	const auto GameMode = Cast<AS_GameModeBase>(GetWorld()->GetAuthGameMode());
+	if (GameMode)
+	{
+		GameMode->OnCalculateApples.AddDynamic(this, &AS_GridManager::CalculateAppleCount);
+		GameMode->SetGridManager(this);
+	}
 
 	auto GameInstance = Cast<US_GameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
 	if(!GameInstance) return;
@@ -58,6 +71,8 @@ void AS_GridManager::BeginPlay()
 	}
 
 	SpawnApple();
+
+	//RebuildNavMesh();
 }
 
 // Called every frame
@@ -65,6 +80,64 @@ void AS_GridManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+bool AS_GridManager::FindPath(const FVector2D& Start, const FVector2D& Goal, TArray<ATile*>& OutPathTiles)
+{
+	TQueue<ATile*> Queue;
+	TMap<ATile*, ATile*> CameFrom;
+	ATile* StartTile = Tiles[Start.Y * GridWidth + Start.X];
+	ATile* GoalTile = Tiles[Goal.Y * GridWidth + Goal.X];
+	if (!StartTile || !GoalTile) return false;
+
+	CameFrom.Add(StartTile, nullptr);
+	Queue.Enqueue(StartTile);
+
+	ATile* Current = nullptr;
+	while (Queue.Dequeue(Current))
+	{
+		if (Current == GoalTile) break;
+
+		for (auto& Pair : Current->GetNeighbours())
+		{
+			ATile* Neighbour = Pair.Value;
+			if (Neighbour && !CameFrom.Contains(Neighbour))
+			{
+				//skip walls
+				if (Neighbour->GetOccupiedBy().ContainsByPredicate([](AActor* A) { return A->IsA<AWall>(); }))
+					continue;
+				CameFrom.Add(Neighbour, Current);
+				Queue.Enqueue(Neighbour);
+			}
+		}
+	}
+
+	if (!CameFrom.Contains(GoalTile)) return false;
+
+	TArray<ATile*> ReversePath;
+	for (ATile* T = GoalTile; T; T = CameFrom[T])
+		ReversePath.Add(T);
+	Algo::Reverse(ReversePath);
+	OutPathTiles = MoveTemp(ReversePath);
+	return true;
+}
+
+FVector2D AS_GridManager::WorldLocationToGridIndex(const FVector& WorldLoc) const
+{
+	FVector Local = WorldLoc - GetActorLocation();
+	int32 X = FMath::RoundToInt(Local.X / TileSize);
+	int32 Y = FMath::RoundToInt(Local.Y / TileSize);
+	return FVector2D(X, Y);
+}
+
+FVector AS_GridManager::GridIndexToWorldLocation(const FVector2D& GridIdx) const
+{
+	return (GetActorLocation() + FVector(GridIdx.X * TileSize, GridIdx.Y * TileSize, TileSize * 0.5f));
+}
+
+AActor* AS_GridManager::GetSpawnedApple() const
+{
+	return SpawnedApple;
 }
 
 void AS_GridManager::GenerateGrid()
@@ -139,6 +212,7 @@ void AS_GridManager::GenerateWalls(const TArray<int32>& WallLayout)
 					if (Tiles.IsValidIndex(TileIndex) && Tiles[TileIndex])
 					{
 						Tiles[TileIndex]->RegisterOccupant(NewWall);
+						Walls.Add(NewWall);
 					}
 				}
 			}
@@ -184,6 +258,8 @@ void AS_GridManager::SpawnApple()
 		{
 			Tiles[TileIndex]->RegisterOccupant(Apple);
 			Apple->OnAppleDestroyed.AddUObject(this, &AS_GridManager::SpawnApple);
+			SpawnedApple = Apple;
+			OnSpawnedApple.Broadcast(Apple);
 		}
 	}
 }
@@ -267,5 +343,40 @@ bool AS_GridManager::LoadWallLayout(TArray<int32>& OutWallLayout, EGameLevel Lev
 	}
 
 	return true;
+}
+
+void AS_GridManager::CalculateAppleCount(float PercentToEat, int32 NumPlayers)
+{
+	int32 FreeCells = Tiles.Num() - Walls.Num() - NumPlayers;
+	float Fraction = PercentToEat / 100.0f;
+
+	int32 ApplesPerPlayer = FMath::FloorToInt(FreeCells * Fraction / NumPlayers);
+	ApplesPerPlayer = FMath::Max(ApplesPerPlayer, 1);
+
+	int32 TotalApples = ApplesPerPlayer * NumPlayers;
+	TotalApples = FMath::Clamp(TotalApples, 1, FreeCells);
+
+	UE_LOG(GridManagerLog, Display, TEXT("FreeCells: %d, WallCount: %d, Fraction: %f, ApplesPerPlayer: %d, NumPlayers: %d"),
+		FreeCells, Walls.Num(), Fraction, ApplesPerPlayer, NumPlayers);
+
+	if (!IsValid(GetWorld())) return;
+
+	const auto GameMode = Cast<AS_GameModeBase>(GetWorld()->GetAuthGameMode());
+	if (GameMode)
+	{
+		GameMode->SetNumberOfApplesToFinishLevel(TotalApples);
+	}
+}
+
+void AS_GridManager::RebuildNavMesh()
+{
+	if(!IsValid(GetWorld())) return;
+
+	if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+	{
+		//NavSys->OnNavigationBoundsUpdated(NavMeshVolume);
+		NavSys->Build();
+		UE_LOG(GridManagerLog, Display, TEXT("RebuildNavMesh"));
+	}
 }
 

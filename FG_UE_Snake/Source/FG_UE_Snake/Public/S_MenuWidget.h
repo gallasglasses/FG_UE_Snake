@@ -9,6 +9,7 @@
 class UTextBlock;
 class UButton;
 class UWidgetSwitcher;
+class USlider;
 //class USoundCue;
 class US_GameInstance;
 class UBackToMenuWidget;
@@ -77,6 +78,18 @@ protected:
 	UTextBlock* AIPlayerText;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* PercentApplesToEatText;
+
+	UPROPERTY(meta = (BindWidget))
+	USlider* PercentApplesToEatSlider;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* StartGameButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* StartGameText;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* QuitButton;
 
 	UPROPERTY(meta = (BindWidget))
@@ -116,6 +129,9 @@ private:
 
 	UFUNCTION()
 	void OnChooseAIPlayer();
+
+	UFUNCTION()
+	void OnSliderValueChanged(float Value);
 
 	UFUNCTION()
 	void OnStartGame();

@@ -11,15 +11,22 @@ DEFINE_LOG_CATEGORY_STATIC(AS_GameHUDLog, All, All);
 
 UUserWidget* AS_GameHUD::CreateWidgetByClass(const TSubclassOf<UUserWidget> GameWidgetClass, const EGameState State, const int32 ZOrder)
 {
-	CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), GameWidgetClass);
+	CurrentWidget = CreateWidget<UUserWidget>(GetOwningPlayerController(), GameWidgetClass);
 	if (CurrentWidget)
 	{
-		CurrentWidget->AddToViewport(ZOrder);
-		if (State == EGameState::Init)
+		if (State == EGameState::InProgress)
 		{
-			const auto LoadingWidget = Cast<UInitWidget>(CurrentWidget);
-			if (!LoadingWidget) return nullptr;
-			LoadingWidget->FadeInAnimation();
+			CurrentWidget->AddToPlayerScreen(ZOrder);
+		}
+		else
+		{
+			CurrentWidget->AddToViewport(ZOrder);
+			if (State == EGameState::Init)
+			{
+				const auto LoadingWidget = Cast<UInitWidget>(CurrentWidget);
+				if (!LoadingWidget) return nullptr;
+				LoadingWidget->FadeInAnimation();
+			}
 		}
 	}
 	return CurrentWidget;
@@ -29,13 +36,11 @@ void AS_GameHUD::BeginPlay()
 {
 	Super::BeginPlay();
 
-	TSubclassOf<UUserWidget>* GameWidgetClass = GameWidgets.Find(EGameState::Init);
-	if (GameWidgetClass && *GameWidgetClass)
-	{
-		CreateWidgetByClass(*GameWidgetClass, EGameState::Init);
-	}
+	UE_LOG(AS_GameHUDLog, Display, TEXT("BeginPlay"));
 
 	if (!GetWorld()) return;
+
+	ShowInitWidget();
 
 	const US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
 	if (!GameInstance) return;
@@ -43,7 +48,10 @@ void AS_GameHUD::BeginPlay()
 	US_GameInstanceSubsystem* GameInstanceSubsystem = GameInstance->GetSubsystem<US_GameInstanceSubsystem>();
 	if (!GameInstanceSubsystem) return;
 
-	GameInstanceSubsystem->OnGameStateChanged.AddDynamic(this, &AS_GameHUD::OnGameStateChanged);
+	if (!GameInstanceSubsystem->OnGameStateChanged.IsAlreadyBound(this, &AS_GameHUD::OnGameStateChanged))
+	{
+		GameInstanceSubsystem->OnGameStateChanged.AddDynamic(this, &AS_GameHUD::OnGameStateChanged);
+	}
 }
 
 UUserWidget* AS_GameHUD::ShowWidget(const EGameState WidgetState, const int32 ZOrder)
@@ -51,9 +59,9 @@ UUserWidget* AS_GameHUD::ShowWidget(const EGameState WidgetState, const int32 ZO
 	TSubclassOf<UUserWidget>* MenuWidgetClass = GameWidgets.Find(WidgetState);
 	if (MenuWidgetClass && *MenuWidgetClass)
 	{
-		CreateWidgetByClass(*MenuWidgetClass, WidgetState, ZOrder);
+		return CreateWidgetByClass(*MenuWidgetClass, WidgetState, ZOrder);
 	}
-	return CurrentWidget;
+	return nullptr;
 }
 
 void AS_GameHUD::HideWidget()
@@ -68,6 +76,26 @@ void AS_GameHUD::HideWidget()
 void AS_GameHUD::OnGameStateChanged(EGameState PreviousState, EGameState NextState)
 {
 	UE_LOG(AS_GameHUDLog, Display, TEXT("OnGameStateChanged"));
+
+	APlayerController* PC = GetOwningPlayerController();
+	bool bIsFirst = PC && PC->GetLocalPlayer() && PC->GetLocalPlayer()->GetControllerId() == 0;
+
+	if (NextState != EGameState::InProgress && !bIsFirst) return;
+
 	HideWidget();
 	ShowWidget(NextState);
+}
+
+void AS_GameHUD::ShowInitWidget()
+{
+	APlayerController* PC = GetOwningPlayerController();
+	bool bIsFirst = PC && PC->GetLocalPlayer() && PC->GetLocalPlayer()->GetControllerId() == 0;
+
+	if (!bIsFirst) return;
+
+	TSubclassOf<UUserWidget>* GameWidgetClass = GameWidgets.Find(EGameState::Init);
+	if (GameWidgetClass && *GameWidgetClass)
+	{
+		CreateWidgetByClass(*GameWidgetClass, EGameState::Init);
+	}
 }

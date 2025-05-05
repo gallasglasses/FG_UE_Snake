@@ -44,6 +44,7 @@ public:
 
 	void SetPosition(const int32 x, const int32 y);
 	void SetNeighbour(EDirectionState Direction, ATile* Neighbour);
+	TMap<EDirectionState, ATile*> GetNeighbours() { return Neighbours; };
 	void RegisterOccupant(AActor* Actor);
 
 	UFUNCTION()

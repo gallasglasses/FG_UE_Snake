@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "FG_UE_CoreTypes.h"
 #include "SnakeBody.generated.h"
 
 class UBoxComponent;
@@ -38,16 +39,18 @@ public:
 	const FVector& GetLastLocation();
 
 	UFUNCTION()
-	void SetNextLocation(const FVector& Location);
+	void SetNextLocation(const FVector& Location, EDirectionState Direction);
 
 	UFUNCTION()
 	void AddChildSnakeBody(ASnakeBody* SnakeBody);
 
 	UFUNCTION()
-	void SetIsMoving();
+	void SetIsMoving(bool IsMoving);
 
 	UFUNCTION()
 	void HandleDestroy();
+
+	void ChangeMeshMaterial(UMaterialInterface* Material);
 
 private:
 

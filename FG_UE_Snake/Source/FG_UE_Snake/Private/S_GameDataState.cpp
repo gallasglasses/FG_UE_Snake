@@ -17,3 +17,8 @@ void AS_GameDataState::SetGamePlayer(EGamePlayer Player)
 
     GamePlayer = Player;
 }
+
+void AS_GameDataState::SetNumberOfApplesToEat(int32 NumberApples)
+{
+    NumberOfApplesToEat = NumberApples;
+}

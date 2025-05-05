@@ -3,11 +3,15 @@
 
 #include "S_GameInstance.h"
 
+DEFINE_LOG_CATEGORY_STATIC(US_GameInstanceLog, All, All);
+
 void US_GameInstance::SetCurrentLevel(EGameLevel Level)
 {
     if (CurrentLevel == Level) return;
 
     CurrentLevel = Level;
+    UE_LOG(US_GameInstanceLog, Display, TEXT("US_GameInstanceLog : CurrentLevel : %s"),
+        *StaticEnum<EGameLevel>()->GetNameStringByValue((int64)CurrentLevel));
 }
 
 void US_GameInstance::SetNextLevel(EGameLevel InNextLevel)
@@ -15,6 +19,9 @@ void US_GameInstance::SetNextLevel(EGameLevel InNextLevel)
     if (NextLevel == InNextLevel) return;
 
     NextLevel = InNextLevel;
+    OnNextLevelChanged.Broadcast(NextLevel);
+    UE_LOG(US_GameInstanceLog, Display, TEXT("US_GameInstanceLog : NextLevel : %s"),
+        *StaticEnum<EGameLevel>()->GetNameStringByValue((int64)NextLevel));
 }
 
 FGameSettings US_GameInstance::GetGameSettings(FName RowName) const

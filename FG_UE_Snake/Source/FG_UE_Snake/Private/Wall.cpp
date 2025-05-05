@@ -29,7 +29,8 @@ AWall::AWall()
 void AWall::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	WallDynamicMI = WallMesh->CreateDynamicMaterialInstance(0, WallMaterial);
 }
 
 // Called every frame
@@ -44,13 +45,21 @@ void AWall::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 
 	if (OtherActor)
 	{
-		UE_LOG(WallLog, Display, TEXT("On Collision the Wall by %s"), *OtherActor->GetName());
+		//UE_LOG(WallLog, Display, TEXT("On Collision the Wall by %s"), *OtherActor->GetName());
 		ASnake* Snake = Cast<ASnake>(OtherActor);
 		if (Snake)
 		{
-			UE_LOG(WallLog, Display, TEXT("Snake collides with the wall"));
+			//UE_LOG(WallLog, Display, TEXT("Snake collides with the wall"));
 			Snake->HandleDeath();
 		}
+	}
+}
+
+void AWall::ApplyMaskOccludingObject_Implementation(float MaskParameter)
+{
+	if (IsValid(WallDynamicMI))
+	{
+		WallDynamicMI->SetScalarParameterValue(TEXT("Mask"), 0.0f);
 	}
 }
 

@@ -67,7 +67,7 @@ void ATile::RegisterOccupant(AActor* Actor)
 	if (Actor && Actor != this && !OccupiedBy.Contains(Actor))
 	{
 		OccupiedBy.Add(Actor);
-		UE_LOG(TileLog, Display, TEXT("%s now occupied by %s"), *GetName(), *Actor->GetName());
+		//UE_LOG(TileLog, Display, TEXT("%s now occupied by %s"), *GetName(), *Actor->GetName());
 	}
 }
 
@@ -82,14 +82,14 @@ void ATile::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	//}
 
 	// +++++++++ Just for log
-	TArray<FString> Names;
+	/*TArray<FString> Names;
 	Names.Reserve(OccupiedBy.Num());
 	for (AActor* Actor : OccupiedBy)
 	{
 		Names.Add(Actor ? Actor->GetName() : TEXT("nullptr"));
 	}
 	const FString Joined = FString::Join(Names, TEXT(", "));
-	UE_LOG(TileLog, Display, TEXT("Tile %s OccupiedBy (%d): %s"), *GetName(), OccupiedBy.Num(), *Joined);
+	UE_LOG(TileLog, Display, TEXT("Tile %s OccupiedBy (%d): %s"), *GetName(), OccupiedBy.Num(), *Joined);*/
 	// +++++++++ Just for log
 }
 
@@ -98,7 +98,7 @@ void ATile::OnCollisionEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	if (OtherActor && OtherActor != this && OccupiedBy.Contains(OtherActor))
 	{
 		OccupiedBy.Remove(OtherActor);
-		UE_LOG(TileLog, Display, TEXT("Tile %s ReleasedBy :  %s"), *GetName(), *OtherActor->GetName());
+		//UE_LOG(TileLog, Display, TEXT("Tile %s ReleasedBy :  %s"), *GetName(), *OtherActor->GetName());
 	}
 }
 

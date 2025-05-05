@@ -53,7 +53,16 @@ private:
 	void OnStartGame();
 
 	UFUNCTION()
-	void LoadLevel();
+	void LoadGameLevel(const FName NextLevel);
 
+	UFUNCTION()
+	void UnloadGameLevel();
+
+	UFUNCTION()
 	void LevelFinishedLoad(ULevel* Level, UWorld* World);
+
+	UFUNCTION()
+	void LevelFinishedUnload(ULevel* Level, UWorld* World);
+
+	int32 NextLatentUUID = 1;
 };

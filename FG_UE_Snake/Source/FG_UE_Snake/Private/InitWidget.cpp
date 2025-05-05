@@ -23,9 +23,27 @@ void UInitWidget::FadeInAnimation()
 	US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
 	if (!GameInstance) return;
 
-	GameInstance->SetCurrentLevel(GameInstance->GetNextLevel());
+	if (GameInstance->GetLevel(GameInstance->GetNextLevel()).IsNone()) //.IsNull() for TSoftObjectPtr
+	{
+		UE_LOG(InitWidgetLog, Error, TEXT("Level name is NONE"));
+		return;
+	}
 
-	LoadLevel();
+	if (GameInstance->GetNextLevel() == EGameLevel::MenuLevel)
+	{
+		UE_LOG(InitWidgetLog, Error, TEXT("OpenLevel"));
+		UGameplayStatics::OpenLevel(this, GameInstance->GetLevel(GameInstance->GetNextLevel()));
+	}
+	if (GameInstance->GetCurrentLevel() == EGameLevel::MenuLevel)
+	{
+		UE_LOG(InitWidgetLog, Error, TEXT("LoadGameLevel New Level"));
+		LoadGameLevel(GameInstance->GetLevel(GameInstance->GetNextLevel()));
+	}
+	else
+	{
+		UE_LOG(InitWidgetLog, Error, TEXT("UnloadGameLevel"));
+		UnloadGameLevel();
+	}
 }
 
 void UInitWidget::NativeOnInitialized()
@@ -73,30 +91,88 @@ void UInitWidget::OnStartGame()
 	PlayAnimation(FadeOutAnim);
 }
 
-void UInitWidget::LoadLevel()
+void UInitWidget::LoadGameLevel(const FName NextLevel)
 {
 	if (!GetWorld()) return;
-	const US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
+	//const US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
+	//if (!GameInstance) return;
+
+	//if (GameInstance->GetLevel(GameInstance->GetNextLevel()).IsNone()) //.IsNull() for TSoftObjectPtr
+	//{
+	//	UE_LOG(InitWidgetLog, Error, TEXT("Level name is NONE"));
+	//	return;
+	//}
+
+	UE_LOG(InitWidgetLog, Display, TEXT("LoadGameLevel : %s"), *NextLevel.ToString());
+	/*FLatentActionInfo LatentInfo;
+	LatentInfo.UUID = NextLatentUUID;
+	LatentInfo.Linkage = LatentInfo.UUID;
+	++NextLatentUUID;*/
+
+	FLatentActionInfo LoadInfo(NextLatentUUID, NextLatentUUID, TEXT("LevelFinishedLoad"), this);
+	++NextLatentUUID;
+
+	//UGameplayStatics::LoadStreamLevelBySoftObjectPtr(GetWorld(), GameInstance->GetLevel(GameInstance->GetNextLevel()), true, false, LatentInfo);
+	UGameplayStatics::LoadStreamLevel(GetWorld(), NextLevel, true, false, LoadInfo); //GameInstance->GetNextLevel()).ToSoftObjectPath().GetLongPackageName().RightChop(1)
+	//FWorldDelegates::LevelAddedToWorld.AddUObject(this, &UInitWidget::LevelFinishedLoad);
+}
+
+void UInitWidget::UnloadGameLevel()
+{
+	if (!GetWorld()) return;
+
+	US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
 	if (!GameInstance) return;
 
-	if (GameInstance->GetLevel(GameInstance->GetNextLevel()).IsNone()) //.IsNull() for TSoftObjectPtr
+	if (GameInstance->GetLevel(GameInstance->GetCurrentLevel()).IsNone()) //.IsNull() for TSoftObjectPtr
 	{
 		UE_LOG(InitWidgetLog, Error, TEXT("Level name is NONE"));
 		return;
 	}
+	if (GameInstance->GetCurrentLevel() == EGameLevel::MenuLevel)
+	{
+		UE_LOG(InitWidgetLog, Error, TEXT("UInitWidget::UnloadGameLevel GetCurrentLevel() == EGameLevel::MenuLevel"));
+		return;
+	}
 
-	FLatentActionInfo LatentInfo;
-	LatentInfo.UUID = 1;
+	UE_LOG(InitWidgetLog, Display, TEXT("UnloadGameLevel : %s"), *GameInstance->GetLevel(GameInstance->GetCurrentLevel()).ToString());
+	/*FLatentActionInfo LatentInfo;
+	LatentInfo.UUID = NextLatentUUID;
 	LatentInfo.Linkage = LatentInfo.UUID;
-	//UGameplayStatics::LoadStreamLevelBySoftObjectPtr(GetWorld(), GameInstance->GetLevel(GameInstance->GetNextLevel()), true, false, LatentInfo);
-	UGameplayStatics::LoadStreamLevel(GetWorld(), GameInstance->GetLevel(GameInstance->GetNextLevel()), true, false, LatentInfo); //GameInstance->GetNextLevel()).ToSoftObjectPath().GetLongPackageName().RightChop(1)
-	FWorldDelegates::LevelAddedToWorld.AddUObject(this, &UInitWidget::LevelFinishedLoad);
+	++NextLatentUUID;*/
+
+	FLatentActionInfo UnloadInfo(NextLatentUUID, NextLatentUUID, TEXT("LevelFinishedUnload"), this);
+	++NextLatentUUID;
+	UGameplayStatics::UnloadStreamLevel(GetWorld(), GameInstance->GetLevel(GameInstance->GetCurrentLevel()), UnloadInfo, false);
+	//FWorldDelegates::LevelRemovedFromWorld.AddUObject(this, &UInitWidget::LevelFinishedUnload);
 }
 
 void UInitWidget::LevelFinishedLoad(ULevel* Level, UWorld* World)
 {
+	//UnloadGameLevel();
+
+	if (!GetWorld()) return;
+
+	US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
+	if (!GameInstance) return;
+
+	GameInstance->SetCurrentLevel(GameInstance->GetNextLevel());
+	UE_LOG(InitWidgetLog, Display, TEXT("CurrentLevel : %s"),
+		*StaticEnum<EGameLevel>()->GetNameStringByValue((int64)GameInstance->GetCurrentLevel()));
+
 	UE_LOG(InitWidgetLog, Display, TEXT("LevelFinishedLoad"));
 	LoadingSwitcher->SetActiveWidgetIndex(1);
 	StopAnimation(LoadingAnim);
 	LoadingImage->RenderTransform.Angle = 0;
+}
+
+void UInitWidget::LevelFinishedUnload(ULevel* Level, UWorld* World)
+{
+	if (!GetWorld()) return;
+
+	US_GameInstance* GameInstance = GetWorld()->GetGameInstance<US_GameInstance>();
+	if (!GameInstance) return;
+
+	UE_LOG(InitWidgetLog, Display, TEXT("LevelFinishedUnload"));
+	LoadGameLevel(GameInstance->GetLevel(GameInstance->GetNextLevel()));
 }
